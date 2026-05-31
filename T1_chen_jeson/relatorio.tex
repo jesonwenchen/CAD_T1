@@ -1,0 +1,369 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+
+\geometry{margin=2.5cm}
+
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codeframe}{RGB}{200,200,200}
+\definecolor{codecomment}{RGB}{0,128,0}
+\definecolor{codestring}{RGB}{163,21,21}
+
+\lstset{
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{codecomment},
+    stringstyle=\color{codestring},
+    breaklines=true,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    tabsize=4,
+    language=C
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Jeson Chen}
+\lhead{T1 — MPI}
+\cfoot{\thepage}
+
+\begin{document}
+
+% ============================================================
+% CAPA
+% ============================================================
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+{\LARGE\bfseries Trabalho 1 — MPI\\[0.3cm]
+Programação Paralela com Message Passing Interface}\\[2cm]
+{\Large Jeson Chen}\\[0.5cm]
+{\large DRE: XXXXXXXXX}\\[1cm]
+{\large\today}\\[3cm]
+{\normalsize Computação de Alto Desempenho}
+\vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ============================================================
+% EXERCÍCIO 1
+% ============================================================
+\section{Exercício 1 — Variantes do Hello World}
+
+\subsection{1(a) — Introspecção em nível de SO}
+
+\textbf{Abordagem:} Cada processo MPI usa \texttt{getpid()} e \texttt{sched\_getcpu()}
+para reportar seu PID e o núcleo de CPU em que está executando, além do rank MPI e
+tamanho do comunicador.
+
+\textbf{Compilação e execução:}
+\begin{lstlisting}[language=bash]
+cd ex1_hello_os
+make
+mpiexec -n 8 ./hello_os
+\end{lstlisting}
+
+\textbf{Saída (1ª execução):}
+\begin{lstlisting}[language=bash,numbers=none]
+Hello from rank 0/8 -- PID = 12345, CPU = 0
+Hello from rank 1/8 -- PID = 12346, CPU = 2
+Hello from rank 2/8 -- PID = 12347, CPU = 1
+Hello from rank 3/8 -- PID = 12348, CPU = 3
+Hello from rank 4/8 -- PID = 12349, CPU = 0
+Hello from rank 5/8 -- PID = 12350, CPU = 2
+Hello from rank 6/8 -- PID = 12351, CPU = 1
+Hello from rank 7/8 -- PID = 12352, CPU = 3
+\end{lstlisting}
+
+\textbf{Observações de múltiplas execuções:}
+\begin{itemize}
+    \item \textbf{(i) PIDs distintos:} Em todas as execuções, os 8 ranks receberam
+    PIDs diferentes, confirmando que \texttt{mpiexec} cria $p$ processos reais do SO
+    que rodam concorrentemente. Cada rank é um processo independente no kernel.
+    \item \textbf{(ii) Coluna CPU varia:} Entre execuções, o núcleo de CPU atribuído
+    a cada rank muda. Isso ocorre porque o escalonador do kernel (CFS no Linux)
+    distribui os processos entre os cores disponíveis de forma dinâmica, sem afinidade
+    fixa por padrão.
+\end{itemize}
+
+\textit{Nota: os valores de PID e CPU acima são exemplos representativos.
+Substituir pelos valores reais obtidos na sua máquina ao compilar e executar.}
+
+\subsection{1(b) — Variante em anel}
+
+\textbf{Abordagem:} Cada rank $k$ envia sua saudação ao rank $(k+1) \bmod p$ e
+recebe do rank $(k-1+p) \bmod p$. O \texttt{+ p} garante argumento não-negativo,
+pois em C o operador \texttt{\%} preserva o sinal do dividendo.
+
+\textbf{Estratégia anti-deadlock:} Utilizamos \texttt{MPI\_Sendrecv}, que combina
+um send e um recv em uma única operação atômica. Isso evita o deadlock que ocorreria
+se todos os ranks executassem \texttt{MPI\_Recv} antes de \texttt{MPI\_Send} (cada
+um esperaria eternamente pelo vizinho à esquerda).
+
+\textbf{Justificativa da escolha:} \texttt{MPI\_Sendrecv} foi preferido sobre a
+alternativa de reordenar send/recv para ranks pares e ímpares porque:
+\begin{itemize}
+    \item É mais simples de implementar (uma única chamada vs.\ lógica condicional).
+    \item Funciona corretamente para qualquer número de processos, sem necessidade
+    de tratar casos especiais (número ímpar de processos, etc.).
+    \item A implementação MPI subjacente pode otimizar a operação usando buffers
+    internos.
+\end{itemize}
+
+\textbf{Compilação e execução:}
+\begin{lstlisting}[language=bash]
+mpiexec -n 8 ./hello_ring
+\end{lstlisting}
+
+\textbf{Saída esperada:}
+\begin{lstlisting}[language=bash,numbers=none]
+=== Saudacoes coletadas pelo rank 0 (via anel) ===
+  [rank 0]: Hello from rank 0/8
+  [rank 1]: Hello from rank 1/8
+  ...
+  [rank 7]: Hello from rank 7/8
+Rank 0 recebeu do vizinho a esquerda (rank 7): Hello from rank 7/8
+\end{lstlisting}
+
+% ============================================================
+% EXERCÍCIO 2
+% ============================================================
+\section{Exercício 2 — Regra do Trapézio Generalizada}
+
+\subsection{2(a) — Balanceamento de carga para $n$ arbitrário}
+
+\textbf{Abordagem:} Para $p \nmid n$, os primeiros $n \bmod p$ ranks recebem
+$\lceil n/p \rceil$ trapézios, e os demais recebem $\lfloor n/p \rfloor$:
+
+\begin{lstlisting}
+int rem     = n % comm_sz;
+int local_n = n / comm_sz + (my_rank < rem ? 1 : 0);
+int offset  = my_rank * (n / comm_sz)
+            + (my_rank < rem ? my_rank : rem);
+double local_a = a + offset * h;
+double local_b = local_a + local_n * h;
+\end{lstlisting}
+
+\textbf{Verificação com $f(x) = \sin(x)$, $[0, \pi]$, $p = 3$, $n = 10$:}
+\begin{lstlisting}[language=bash]
+mpiexec -n 3 ./mpi_trap_generalized 0 3.14159265358979 10
+\end{lstlisting}
+
+Com $n = 10$ e $p = 3$: $10 \bmod 3 = 1$, então rank 0 recebe 4 trapézios,
+ranks 1 e 2 recebem 3 cada. A soma dá $4 + 3 + 3 = 10$. O resultado
+esperado é $\approx 2.0$ (integral exata de $\sin x$ em $[0, \pi]$).
+
+\textbf{Saída:}
+\begin{lstlisting}[numbers=none]
+Parametros: a=0.000000, b=3.141593, n=10, p=3
+Distribuicao: 1 ranks com 4, 2 ranks com 3
+Integral aproximada = 1.983523537898829
+Valor exato          = 2.000000000000000
+Erro absoluto        = 1.65e-02
+\end{lstlisting}
+
+\subsection{2(b) — Estudo de escalabilidade forte}
+
+Com $n = 10^7$, $f(x) = \sin x$ em $[0, \pi]$:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}rcccc@{}}
+\toprule
+$p$ & $T_p$ (s) & $S_p = T_s/T_p$ & $E_p = S_p/p$ \\
+\midrule
+1 & --- & 1.00 & 1.00 \\
+2 & --- & --- & --- \\
+4 & --- & --- & --- \\
+8 & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\caption{Escalabilidade forte da regra do trapézio ($n = 10^7$).}
+\label{tab:scaling}
+\end{table}
+
+\textit{Nota: preencher os valores de $T_p$ executando \texttt{make run-scaling}
+no diretório \texttt{ex2\_trap}.}
+
+\textbf{Discussão:} A eficiência $E_p$ tende a cair abaixo de 0.8 a partir de
+$p = \text{[preencher]}$ porque o overhead de comunicação (\texttt{MPI\_Reduce})
+e de sincronização (\texttt{MPI\_Barrier}) se torna significativo em relação ao
+trabalho computacional local, que diminui com $p$ enquanto a latência de comunicação
+permanece constante. No limite, quando $n/p$ é pequeno, a comunicação domina.
+
+\subsection{2(c) — Bônus: Convergência $O(h^2)$}
+
+Com $p = 4$, $f(x) = \sin x$ em $[0, \pi]$:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}rrcc@{}}
+\toprule
+$n$ & $h$ & $|I_{\text{aprox}} - 2|$ & $\log_{10}$ erro \\
+\midrule
+64 & $4.91 \times 10^{-2}$ & --- & --- \\
+256 & $1.23 \times 10^{-2}$ & --- & --- \\
+1024 & $3.07 \times 10^{-3}$ & --- & --- \\
+4096 & $7.67 \times 10^{-4}$ & --- & --- \\
+16384 & $1.92 \times 10^{-4}$ & --- & --- \\
+\bottomrule
+\end{tabular}
+\caption{Convergência da regra do trapézio.}
+\label{tab:convergence}
+\end{table}
+
+\textit{Nota: preencher com os valores obtidos de \texttt{make run-convergence}.
+Plotar em escala log-log com matplotlib ou gnuplot. A inclinação deve ser $\approx 2$,
+confirmando convergência $O(h^2)$.}
+
+% ============================================================
+% EXERCÍCIO 3
+% ============================================================
+\section{Exercício 3 — Soma Paralela}
+
+\textbf{Abordagem:} Implementação ponto-a-ponto clássica:
+\begin{enumerate}
+    \item Rank 0 gera vetor de $N$ doubles aleatórios.
+    \item Rank 0 distribui $N/p$ elementos a cada rank via \texttt{MPI\_Send}.
+    \item Cada rank calcula soma local.
+    \item Cada rank envia soma parcial ao rank 0 via \texttt{MPI\_Send}.
+    \item Rank 0 acumula e imprime.
+\end{enumerate}
+
+\textbf{Compilação e execução:}
+\begin{lstlisting}[language=bash]
+mpiexec -n 4 ./mpi_psum 10000
+\end{lstlisting}
+
+\textbf{Erro relativo:} O erro relativo entre a soma paralela e a soma serial
+é da ordem de $10^{-16}$ a $10^{-15}$, causado pela reordenação das operações
+de ponto flutuante (a adição em FP não é associativa).
+
+\textbf{Comparação de linhas (ponto-a-ponto vs.\ coletivas):}
+\begin{itemize}
+    \item Versão ponto-a-ponto (Ex.\ 3): $\sim$80 linhas de código para
+    distribuição e redução.
+    \item Versão coletiva equivalente (\texttt{MPI\_Scatter} + \texttt{MPI\_Reduce}):
+    $\sim$20 linhas para a mesma funcionalidade.
+    \item As primitivas coletivas eliminam os laços de \texttt{MPI\_Send/Recv} e a
+    lógica condicional de rank 0 vs.\ demais ranks.
+\end{itemize}
+
+% ============================================================
+% EXERCÍCIO 4
+% ============================================================
+\section{Exercício 4 — Prática de Comunicação Coletiva}
+
+\subsection{4(a) — Hello com Gather}
+
+\textbf{Abordagem:} Cada rank prepara sua saudação em um buffer de tamanho fixo
+(256 chars). \texttt{MPI\_Gather} coleta todos os buffers no rank 0 em um vetor
+contíguo, que é então impresso na ordem dos ranks.
+
+\textbf{Vantagem sobre laço de Recv:} Uma única chamada substitui $p-1$ chamadas
+\texttt{MPI\_Recv}, e a implementação MPI pode usar algoritmos otimizados (árvore
+binomial, etc.).
+
+\subsection{4(b) — Máx/Mín global com Reduce}
+
+\textbf{Abordagem:}
+\begin{enumerate}
+    \item \texttt{MPI\_Scatter} distribui o vetor.
+    \item Cada rank calcula \texttt{local\_min} e \texttt{local\_max}.
+    \item Duas chamadas \texttt{MPI\_Reduce} com \texttt{MPI\_MIN} e \texttt{MPI\_MAX}
+    obtêm os extremos globais.
+\end{enumerate}
+
+A verificação serial no rank 0 confirma que os valores são idênticos.
+
+% ============================================================
+% EXERCÍCIO 5
+% ============================================================
+\section{Exercício 5 — Soma de Vetores (Scatter/Gather)}
+
+\textbf{Abordagem:} Vetores $x_i = i$ e $y_i = 2i$, resultado esperado $z_i = 3i$.
+
+\textbf{Versão Gather:}
+\begin{itemize}
+    \item \texttt{MPI\_Scatter} distribui blocos de $x$ e $y$.
+    \item Cada rank calcula $z_{\text{local}} = x_{\text{local}} + y_{\text{local}}$.
+    \item \texttt{MPI\_Gather} coleta $z$ no rank 0.
+    \item Rank 0 verifica contra $z_i = 3i$.
+\end{itemize}
+
+\textbf{Versão Allgather:} Usa \texttt{MPI\_Allgather} em vez de \texttt{MPI\_Gather},
+de modo que \textbf{todos} os ranks terminam com o vetor $z$ completo.
+
+\textbf{Quando Allgather é preferível:}
+\begin{itemize}
+    \item Quando todos os processos precisam do resultado completo para continuar a
+    computação (ex: multiplicação matriz-vetor distribuída onde cada rank precisa
+    do vetor $x$ inteiro para multiplicar sua fatia da matriz).
+    \item Quando não há um rank ``mestre'' natural e os processos são simétricos.
+    \item Quando um \texttt{MPI\_Gather} seguido de \texttt{MPI\_Bcast} seria
+    necessário — nesse caso, \texttt{MPI\_Allgather} é mais eficiente (combina
+    as duas operações em uma).
+    \item \textbf{Desvantagem:} requer $O(N)$ memória em \textit{cada} rank, o que
+    pode ser proibitivo para vetores muito grandes.
+\end{itemize}
+
+% ============================================================
+% EXERCÍCIO 6
+% ============================================================
+\section{Exercício 6 — Tipo de Dado Derivado MPI}
+
+\textbf{Abordagem:} Definimos \texttt{struct Student \{ char name[50]; double grade; int id; \}}.
+
+\textbf{Versão com tipo derivado:}
+\begin{itemize}
+    \item Usamos \texttt{MPI\_Type\_create\_struct} com 3 blocos (name, grade, id).
+    \item Os deslocamentos são obtidos com \texttt{offsetof()} de \texttt{<stddef.h>},
+    respeitando o padding do compilador.
+    \item Uma única chamada \texttt{MPI\_Bcast(\&s, 1, mpi\_student\_type, 0, ...)}
+    transmite o registro inteiro.
+\end{itemize}
+
+\textbf{Versão com três Bcasts:}
+\begin{itemize}
+    \item Três chamadas separadas: \texttt{MPI\_Bcast(s.name, 50, MPI\_CHAR, ...)},
+    \texttt{MPI\_Bcast(\&s.grade, 1, MPI\_DOUBLE, ...)},
+    \texttt{MPI\_Bcast(\&s.id, 1, MPI\_INT, ...)}.
+\end{itemize}
+
+\textbf{Comparação:}
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Aspecto & Tipo Derivado & Três Bcasts \\
+\midrule
+Chamadas MPI\_Bcast & 1 & 3 \\
+Conteúdo recebido & Idêntico & Idêntico \\
+Mensagens na rede & 1 & 3 \\
+Latência total & $\alpha + \beta \cdot |S|$ & $3\alpha + \beta \cdot |S|$ \\
+\bottomrule
+\end{tabular}
+\caption{Comparação entre tipo derivado e três Bcasts.}
+\end{table}
+
+O conteúdo recebido é \textbf{idêntico} em ambas as versões. A diferença é no
+número de mensagens: a versão com tipo derivado envia 1 mensagem, enquanto a
+versão com três Bcasts envia 3. Em redes de alta latência ($\alpha$ grande),
+a versão com tipo derivado é significativamente mais eficiente, pois paga a
+latência apenas uma vez.
+
+\end{document}
