@@ -1,11 +1,4 @@
-/*
- * student_three_bcasts.c — Exercício 6 (versão com três MPI_Bcast)
- * Transmite cada campo de struct Student separadamente com três
- * chamadas MPI_Bcast (uma por campo).
- *
- * Compilar: mpicc -O2 -Wall -o student_three_bcasts student_three_bcasts.c -lm
- * Executar: mpiexec -n <p> ./student_three_bcasts
- */
+/* student_three_bcasts.c — Exercício 6 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

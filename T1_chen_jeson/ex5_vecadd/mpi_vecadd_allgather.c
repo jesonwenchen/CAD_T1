@@ -1,22 +1,4 @@
-/*
- * mpi_vecadd_allgather.c — Exercício 5 (versão Allgather)
- * Soma de vetores paralela: z = x + y
- *
- * Igual à versão Gather, mas usa MPI_Allgather para que TODOS os
- * ranks terminem com o vetor z completo.
- *
- * Quando MPI_Allgather é preferível a MPI_Gather:
- * - Quando todos os processos precisam do resultado completo para
- *   continuar a computação (ex: multiplicação matriz-vetor distribuída
- *   onde cada rank precisa do vetor x inteiro).
- * - Quando o passo seguinte do algoritmo requer que todos os ranks
- *   tenham acesso ao vetor global (evita broadcast subsequente).
- * - Quando não existe um rank "mestre" natural e todos os ranks são
- *   iguais em termos de consumo de dados.
- *
- * Compilar: mpicc -O2 -Wall -o mpi_vecadd_allgather mpi_vecadd_allgather.c -lm
- * Executar: mpiexec -n <p> ./mpi_vecadd_allgather [N]
- */
+/* mpi_vecadd_allgather.c — Exercício 5 (versão Allgather) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -64,7 +46,7 @@ int main(int argc, char *argv[]) {
     double *local_y = malloc((size_t)local_n * sizeof(double));
     double *local_z = malloc((size_t)local_n * sizeof(double));
 
-    /* z global — TODOS os ranks alocam, pois Allgather distribui a todos */
+    /* z global — MPI_Allgather distribui a todos */
     double *z = malloc((size_t)N * sizeof(double));
 
     /* Distribuir com Scatter */

@@ -1,11 +1,4 @@
-/*
- * hello_gather.c — Exercício 4(a)
- * Hello World MPI usando MPI_Gather para coletar todas as saudações
- * em um único vetor, em vez de um laço de MPI_Recv.
- *
- * Compilar: mpicc -O2 -Wall -o hello_gather hello_gather.c -lm
- * Executar: mpiexec -n <p> ./hello_gather
- */
+/* hello_gather.c — Exercício 4(a) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

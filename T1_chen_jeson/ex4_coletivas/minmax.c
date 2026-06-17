@@ -1,12 +1,4 @@
-/*
- * minmax.c — Exercício 4(b)
- * Distribui um vetor de N doubles entre p processos com MPI_Scatter.
- * Calcula o máximo e mínimo globais usando MPI_Reduce com MPI_MAX e
- * MPI_MIN. Verifica contra cálculo serial.
- *
- * Compilar: mpicc -O2 -Wall -o minmax minmax.c -lm
- * Executar: mpiexec -n <p> ./minmax [N]
- */
+/* minmax.c — Exercício 4(b) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

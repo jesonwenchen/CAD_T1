@@ -1,16 +1,8 @@
-/*
- * hello_os.c — Exercício 1(a)
- * Cada processo MPI reporta seu rank, tamanho do comunicador,
- * PID do SO e núcleo de CPU em que está rodando.
- *
- * Compilar: mpicc -O2 -Wall -o hello_os hello_os.c -lm
- * Executar: mpiexec -n 8 ./hello_os
- */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>    /* getpid() */
-#include <sched.h>     /* sched_getcpu() */
+#include <unistd.h>
+#include <sched.h>
 #include <mpi.h>
 
 int main(int argc, char *argv[]) {

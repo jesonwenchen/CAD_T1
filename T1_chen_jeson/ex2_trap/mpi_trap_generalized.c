@@ -1,17 +1,4 @@
-/*
- * mpi_trap_generalized.c — Exercício 2
- * Regra do trapézio generalizada para n arbitrário (p não precisa
- * dividir n). Inclui:
- *   (a) Balanceamento de carga para n arbitrário
- *   (b) Estudo de escalabilidade forte com MPI_Wtime
- *   (c) Bônus: verificação de convergência O(h²)
- *
- * Compilar: mpicc -O2 -Wall -o mpi_trap_generalized mpi_trap_generalized.c -lm
- * Executar: mpiexec -n <p> ./mpi_trap_generalized <a> <b> <n>
- *
- * Exemplo de verificação: mpiexec -n 3 ./mpi_trap_generalized 0 3.14159265358979 10
- *   Resultado esperado ≈ 2.0
- */
+/* mpi_trap_generalized.c — Exercício 2 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -56,11 +43,7 @@ int main(int argc, char *argv[]) {
 
     double h = (b - a) / n;
 
-    /*
-     * (a) Balanceamento de carga para n arbitrário:
-     * Os primeiros (n % p) ranks recebem ceil(n/p) trapézios,
-     * os demais recebem floor(n/p).
-     */
+    /* Balanceamento de carga para n arbitrário */
     int rem     = n % comm_sz;
     int local_n = n / comm_sz + (my_rank < rem ? 1 : 0);
     int offset  = my_rank * (n / comm_sz) + (my_rank < rem ? my_rank : rem);

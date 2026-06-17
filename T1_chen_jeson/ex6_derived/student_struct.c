@@ -1,14 +1,4 @@
-/*
- * student_struct.c — Exercício 6 (versão com tipo derivado)
- * Define um tipo derivado MPI para struct Student e transmite o
- * registro com UMA única chamada MPI_Bcast.
- *
- * Usa offsetof() de <stddef.h> para calcular os deslocamentos
- * corretamente, respeitando o padding do compilador.
- *
- * Compilar: mpicc -O2 -Wall -o student_struct student_struct.c -lm
- * Executar: mpiexec -n <p> ./student_struct
- */
+/* student_struct.c — Exercício 6 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

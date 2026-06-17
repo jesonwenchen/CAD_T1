@@ -1,16 +1,4 @@
-/*
- * mpi_vecadd_gather.c — Exercício 5 (versão Gather)
- * Soma de vetores paralela: z = x + y
- *
- * - Processo 0 inicializa x[N] e y[N] (x_i = i, y_i = 2*i).
- * - MPI_Scatter distribui blocos de x e y.
- * - Cada processo calcula seu bloco de z = x + y.
- * - MPI_Gather coleta z no processo 0.
- * - Processo 0 verifica contra cálculo serial.
- *
- * Compilar: mpicc -O2 -Wall -o mpi_vecadd_gather mpi_vecadd_gather.c -lm
- * Executar: mpiexec -n <p> ./mpi_vecadd_gather [N]
- */
+/* mpi_vecadd_gather.c — Exercício 5 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

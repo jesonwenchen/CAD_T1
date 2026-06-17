@@ -1,19 +1,4 @@
-/*
- * mpi_psum.c — Exercício 3
- * Soma paralela usando comunicação ponto-a-ponto.
- *
- * - Processo 0 gera um vetor de N doubles aleatórios.
- * - Processo 0 distribui N/p elementos a cada processo via MPI_Send.
- * - Cada processo calcula sua soma local.
- * - Cada processo envia soma parcial ao processo 0.
- * - Processo 0 reduz por adição e imprime o total.
- * - Compara com soma serial e reporta erro relativo.
- *
- * Nota: assume p | N para simplificar (N é ajustado se necessário).
- *
- * Compilar: mpicc -O2 -Wall -o mpi_psum mpi_psum.c -lm
- * Executar: mpiexec -n <p> ./mpi_psum [N]
- */
+/* mpi_psum.c — Exercício 3 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

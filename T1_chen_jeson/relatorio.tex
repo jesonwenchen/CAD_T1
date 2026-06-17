@@ -186,10 +186,10 @@ Com $n = 10^7$, $f(x) = \sin x$ em $[0, \pi]$:
 \toprule
 $p$ & $T_p$ (s) & $S_p = T_s/T_p$ & $E_p = S_p/p$ \\
 \midrule
-1 & --- & 1.00 & 1.00 \\
-2 & --- & --- & --- \\
-4 & --- & --- & --- \\
-8 & --- & --- & --- \\
+1 & 0.0825 & 1.00 & 1.00 \\
+2 & 0.0464 & 1.77 & 0.88 \\
+4 & 0.0230 & 3.58 & 0.89 \\
+8 & 0.0162 & 5.09 & 0.63 \\
 \bottomrule
 \end{tabular}
 \caption{Escalabilidade forte da regra do trapézio ($n = 10^7$).}
@@ -200,7 +200,7 @@ $p$ & $T_p$ (s) & $S_p = T_s/T_p$ & $E_p = S_p/p$ \\
 no diretório \texttt{ex2\_trap}.}
 
 \textbf{Discussão:} A eficiência $E_p$ tende a cair abaixo de 0.8 a partir de
-$p = \text{[preencher]}$ porque o overhead de comunicação (\texttt{MPI\_Reduce})
+$p = 8$ porque o overhead de comunicação (\texttt{MPI\_Reduce})
 e de sincronização (\texttt{MPI\_Barrier}) se torna significativo em relação ao
 trabalho computacional local, que diminui com $p$ enquanto a latência de comunicação
 permanece constante. No limite, quando $n/p$ é pequeno, a comunicação domina.
@@ -215,20 +215,27 @@ Com $p = 4$, $f(x) = \sin x$ em $[0, \pi]$:
 \toprule
 $n$ & $h$ & $|I_{\text{aprox}} - 2|$ & $\log_{10}$ erro \\
 \midrule
-64 & $4.91 \times 10^{-2}$ & --- & --- \\
-256 & $1.23 \times 10^{-2}$ & --- & --- \\
-1024 & $3.07 \times 10^{-3}$ & --- & --- \\
-4096 & $7.67 \times 10^{-4}$ & --- & --- \\
-16384 & $1.92 \times 10^{-4}$ & --- & --- \\
+64 & $4.91 \times 10^{-2}$ & $4.02 \times 10^{-4}$ & -3.39 \\
+256 & $1.23 \times 10^{-2}$ & $2.51 \times 10^{-5}$ & -4.60 \\
+1024 & $3.07 \times 10^{-3}$ & $1.57 \times 10^{-6}$ & -5.80 \\
+4096 & $7.67 \times 10^{-4}$ & $9.80 \times 10^{-8}$ & -7.00 \\
+16384 & $1.92 \times 10^{-4}$ & $6.13 \times 10^{-9}$ & -8.21 \\
 \bottomrule
 \end{tabular}
 \caption{Convergência da regra do trapézio.}
 \label{tab:convergence}
 \end{table}
 
-\textit{Nota: preencher com os valores obtidos de \texttt{make run-convergence}.
-Plotar em escala log-log com matplotlib ou gnuplot. A inclinação deve ser $\approx 2$,
-confirmando convergência $O(h^2)$.}
+A figura~\ref{fig:convergencia} apresenta o gráfico log-log do erro absoluto em
+função de $h$. A inclinação medida da reta de regressão linear nos pontos é de $2.00$, o que
+confirma empiricamente que a convergência da regra do trapézio é de fato $O(h^2)$.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{convergencia.pdf}
+    \caption{Gráfico log-log de convergência da regra do trapézio (escala log-log).}
+    \label{fig:convergencia}
+\end{figure}
 
 % ============================================================
 % EXERCÍCIO 3
